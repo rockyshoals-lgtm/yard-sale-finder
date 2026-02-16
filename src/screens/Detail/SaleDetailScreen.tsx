@@ -6,6 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING, RADIUS, CATEGORIES } from '../../theme';
 import { useUserStore } from '../../stores/userStore';
+import { useXPToast } from '../../components/XPToast';
 import type { Sale } from '../../types';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -13,6 +14,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 export default function SaleDetailScreen({ route, navigation }: any) {
   const sale: Sale = route.params.sale;
   const { isSaved, toggleSaveSale, isVisited, markVisited, profile } = useUserStore();
+  const { showXP, showCoins } = useXPToast();
   const [photoIndex, setPhotoIndex] = useState(0);
 
   const saved = isSaved(sale.id);
@@ -39,7 +41,18 @@ export default function SaleDetailScreen({ route, navigation }: any) {
   };
 
   const handleMarkVisited = () => {
-    markVisited(sale.id);
+    if (!isVisited(sale.id)) {
+      markVisited(sale.id);
+      showXP(10);
+      setTimeout(() => showCoins(5), 400);
+    }
+  };
+
+  const handleToggleSave = () => {
+    const nowSaved = toggleSaveSale(sale.id);
+    if (nowSaved) {
+      showXP(2);
+    }
   };
 
   return (
@@ -161,7 +174,7 @@ export default function SaleDetailScreen({ route, navigation }: any) {
           <View style={s.actionRow}>
             <TouchableOpacity
               style={[s.actionBtn, saved && s.actionBtnActive]}
-              onPress={() => toggleSaveSale(sale.id)}
+              onPress={handleToggleSave}
             >
               <Text style={s.actionBtnText}>{saved ? '❤️ Saved' : '🤍 Save'}</Text>
             </TouchableOpacity>

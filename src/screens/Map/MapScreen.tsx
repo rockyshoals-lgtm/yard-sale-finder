@@ -4,10 +4,13 @@ import {
   Dimensions, TextInput, ScrollView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { WebView } from 'react-native-webview';
+import * as Location from 'expo-location';
 import { COLORS, SPACING, RADIUS, CATEGORIES, type CategoryId } from '../../theme';
 import { fetchSales } from '../../services/api';
 import { useUserStore } from '../../stores/userStore';
-import type { Sale, SaleFilters } from '../../types';
+import { useXPToast } from '../../components/XPToast';
+import type { Sale } from '../../types';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -23,6 +26,200 @@ const DATE_OPTIONS = [
 const DEFAULT_LAT = 45.5152;
 const DEFAULT_LNG = -122.6784;
 
+// Haversine distance in miles
+function haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 3959; // Earth radius in miles
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function generateMapHTML(
+  sales: Sale[],
+  userLat: number,
+  userLng: number,
+  radiusMiles: number,
+  savedIds: string[],
+): string {
+  const salesJSON = JSON.stringify(sales.map(s => ({
+    id: s.id,
+    lat: s.location.latitude,
+    lng: s.location.longitude,
+    title: s.title,
+    address: `${s.address}, ${s.city}`,
+    featured: s.isFeatured,
+    saved: savedIds.includes(s.id),
+    categories: s.categories.slice(0, 3).join(', '),
+    startTime: s.startTime,
+    endTime: s.endTime,
+    startDate: s.startDate,
+  })));
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body, #map { width: 100%; height: 100%; }
+    .sale-pin {
+      display: flex; align-items: center; justify-content: center;
+      width: 36px; height: 36px; border-radius: 50%;
+      background: ${COLORS.primary}; border: 3px solid #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      font-size: 16px; cursor: pointer;
+      transition: transform 0.15s;
+    }
+    .sale-pin:hover { transform: scale(1.15); }
+    .sale-pin.featured {
+      background: ${COLORS.accent}; width: 42px; height: 42px;
+      border: 3px solid #fff;
+    }
+    .sale-pin.saved { background: ${COLORS.error}; }
+    .user-pin {
+      width: 18px; height: 18px; border-radius: 50%;
+      background: #3B82F6; border: 3px solid #fff;
+      box-shadow: 0 0 0 8px rgba(59,130,246,0.2), 0 2px 6px rgba(0,0,0,0.3);
+    }
+    .cluster-pin {
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 50%; background: ${COLORS.primaryDark};
+      border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      color: #fff; font-weight: 700; font-family: -apple-system, sans-serif;
+    }
+    .leaflet-popup-content-wrapper {
+      border-radius: 12px; padding: 0; overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    }
+    .leaflet-popup-content { margin: 0; min-width: 200px; }
+    .popup-card { padding: 12px 14px; }
+    .popup-featured {
+      background: ${COLORS.accentBg}; color: ${COLORS.accentDark};
+      font-size: 10px; font-weight: 700; padding: 2px 8px;
+      display: inline-block; border-radius: 4px; margin-bottom: 6px;
+    }
+    .popup-title { font-size: 15px; font-weight: 700; color: #212529; margin-bottom: 4px; }
+    .popup-meta { font-size: 12px; color: #6B7280; margin-bottom: 2px; }
+    .popup-btn {
+      display: block; width: 100%; padding: 10px; text-align: center;
+      background: ${COLORS.primary}; color: #fff; font-weight: 700;
+      font-size: 14px; border: none; cursor: pointer;
+      border-top: 1px solid ${COLORS.border};
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script>
+    var sales = ${salesJSON};
+    var userLat = ${userLat};
+    var userLng = ${userLng};
+    var radius = ${radiusMiles};
+
+    var map = L.map('map', {
+      center: [userLat, userLng],
+      zoom: radius <= 1 ? 15 : radius <= 5 ? 13 : radius <= 10 ? 12 : radius <= 25 ? 11 : 10,
+      zoomControl: false,
+      attributionControl: false,
+    });
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+    }).addTo(map);
+
+    // User location marker
+    var userIcon = L.divIcon({
+      className: '',
+      html: '<div class="user-pin"></div>',
+      iconSize: [18, 18],
+      iconAnchor: [9, 9],
+    });
+    L.marker([userLat, userLng], { icon: userIcon, zIndexOffset: 1000 })
+      .addTo(map)
+      .bindPopup('<div class="popup-card"><div class="popup-title">📍 You are here</div></div>');
+
+    // Simple clustering: group sales within ~0.003 deg (~300m)
+    var CLUSTER_DIST = 0.003;
+    var clusters = [];
+    var used = new Set();
+
+    for (var i = 0; i < sales.length; i++) {
+      if (used.has(i)) continue;
+      var group = [sales[i]];
+      used.add(i);
+      for (var j = i + 1; j < sales.length; j++) {
+        if (used.has(j)) continue;
+        var dx = sales[i].lat - sales[j].lat;
+        var dy = sales[i].lng - sales[j].lng;
+        if (Math.sqrt(dx*dx + dy*dy) < CLUSTER_DIST) {
+          group.push(sales[j]);
+          used.add(j);
+        }
+      }
+      clusters.push(group);
+    }
+
+    clusters.forEach(function(group) {
+      if (group.length === 1) {
+        var s = group[0];
+        var cls = s.featured ? 'featured' : (s.saved ? 'saved' : '');
+        var emoji = s.featured ? '⭐' : '🏷️';
+        var icon = L.divIcon({
+          className: '',
+          html: '<div class="sale-pin ' + cls + '">' + emoji + '</div>',
+          iconSize: [s.featured ? 42 : 36, s.featured ? 42 : 36],
+          iconAnchor: [s.featured ? 21 : 18, s.featured ? 21 : 18],
+        });
+        var popup = '<div class="popup-card">' +
+          (s.featured ? '<div class="popup-featured">⭐ FEATURED</div>' : '') +
+          '<div class="popup-title">' + s.title.replace(/</g,'&lt;') + '</div>' +
+          '<div class="popup-meta">📍 ' + s.address.replace(/</g,'&lt;') + '</div>' +
+          '<div class="popup-meta">🕐 ' + s.startDate + ' · ' + s.startTime + '–' + s.endTime + '</div>' +
+          '<div class="popup-meta">🏷️ ' + s.categories + '</div>' +
+          '</div>' +
+          '<button class="popup-btn" onclick="window.ReactNativeWebView.postMessage(JSON.stringify({type:\\'select\\',id:\\'' + s.id + '\\'}))">View Details →</button>';
+        L.marker([s.lat, s.lng], { icon: icon }).addTo(map).bindPopup(popup);
+      } else {
+        // Cluster marker
+        var avgLat = group.reduce(function(a,b){return a+b.lat},0) / group.length;
+        var avgLng = group.reduce(function(a,b){return a+b.lng},0) / group.length;
+        var size = group.length < 5 ? 40 : group.length < 10 ? 48 : 56;
+        var icon = L.divIcon({
+          className: '',
+          html: '<div class="cluster-pin" style="width:'+size+'px;height:'+size+'px;font-size:'+(size/3)+'px">' + group.length + '</div>',
+          iconSize: [size, size],
+          iconAnchor: [size/2, size/2],
+        });
+        var popup = '<div class="popup-card">' +
+          '<div class="popup-title">' + group.length + ' Sales Nearby</div>' +
+          group.slice(0, 3).map(function(s){
+            return '<div class="popup-meta" style="cursor:pointer" onclick="window.ReactNativeWebView.postMessage(JSON.stringify({type:\\'select\\',id:\\'' + s.id + '\\'}))">' +
+              (s.featured ? '⭐ ' : '🏷️ ') + s.title.replace(/</g,'&lt;').substring(0,30) + '</div>';
+          }).join('') +
+          (group.length > 3 ? '<div class="popup-meta">+ ' + (group.length - 3) + ' more...</div>' : '') +
+          '</div>';
+        L.marker([avgLat, avgLng], { icon: icon }).addTo(map).bindPopup(popup);
+      }
+    });
+
+    // Recenter button message
+    map.on('moveend', function() {
+      var c = map.getCenter();
+      window.ReactNativeWebView.postMessage(JSON.stringify({
+        type: 'mapMoved', lat: c.lat, lng: c.lng
+      }));
+    });
+  </script>
+</body>
+</html>`;
+}
+
 export default function MapScreen({ navigation }: any) {
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,8 +229,38 @@ export default function MapScreen({ navigation }: any) {
   const [selectedCategories, setSelectedCategories] = useState<CategoryId[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
+  const [userLat, setUserLat] = useState(DEFAULT_LAT);
+  const [userLng, setUserLng] = useState(DEFAULT_LNG);
+  const [locationReady, setLocationReady] = useState(false);
+  const [mapKey, setMapKey] = useState(0); // force re-render map
 
-  const { isSaved, toggleSaveSale } = useUserStore();
+  const webviewRef = useRef<WebView>(null);
+  const { isSaved, toggleSaveSale, savedSaleIds } = useUserStore();
+  const { showXP } = useXPToast();
+
+  const handleToggleSave = (saleId: string) => {
+    const nowSaved = toggleSaveSale(saleId);
+    if (nowSaved) showXP(2);
+  };
+
+  // Get real user location
+  useEffect(() => {
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === 'granted') {
+          const loc = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+          setUserLat(loc.coords.latitude);
+          setUserLng(loc.coords.longitude);
+        }
+      } catch (e) {
+        console.log('Location error, using default Portland coords:', e);
+      }
+      setLocationReady(true);
+    })();
+  }, []);
 
   const loadSales = useCallback(async () => {
     setLoading(true);
@@ -61,25 +288,41 @@ export default function MapScreen({ navigation }: any) {
       }
 
       const result = await fetchSales({
-        latitude: DEFAULT_LAT,
-        longitude: DEFAULT_LNG,
+        latitude: userLat,
+        longitude: userLng,
         radiusMiles,
         categories: selectedCategories.length > 0 ? selectedCategories : undefined,
         search: searchText || undefined,
         dateFrom,
         dateTo,
       });
-      setSales(result.data);
+
+      // Apply real haversine distance filter
+      const filtered = result.data.filter((sale) => {
+        const dist = haversine(userLat, userLng, sale.location.latitude, sale.location.longitude);
+        return dist <= radiusMiles;
+      });
+
+      setSales(filtered);
     } catch (err) {
       console.error('Failed to load sales:', err);
     } finally {
       setLoading(false);
     }
-  }, [radiusMiles, dateFilter, selectedCategories, searchText]);
+  }, [radiusMiles, dateFilter, selectedCategories, searchText, userLat, userLng]);
 
   useEffect(() => {
-    loadSales();
-  }, [loadSales]);
+    if (locationReady) {
+      loadSales();
+    }
+  }, [loadSales, locationReady]);
+
+  // Re-render map whenever sales or location changes
+  useEffect(() => {
+    if (!loading && locationReady) {
+      setMapKey((k) => k + 1);
+    }
+  }, [sales, loading, locationReady]);
 
   const toggleCategory = (catId: CategoryId) => {
     setSelectedCategories((prev) =>
@@ -90,10 +333,27 @@ export default function MapScreen({ navigation }: any) {
   const getDateLabel = (sale: Sale): string => {
     const start = new Date(sale.startDate + 'T00:00:00');
     const now = new Date();
-    const diffDays = Math.ceil((start.getTime() - now.getTime()) / (86400000));
+    const diffDays = Math.ceil((start.getTime() - now.getTime()) / 86400000);
     if (diffDays <= 0) return 'Today';
     if (diffDays === 1) return 'Tomorrow';
     return start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  };
+
+  const getDistanceLabel = (sale: Sale): string => {
+    const dist = haversine(userLat, userLng, sale.location.latitude, sale.location.longitude);
+    return dist < 0.1 ? '<0.1 mi' : `${dist.toFixed(1)} mi`;
+  };
+
+  const handleWebViewMessage = (event: any) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      if (data.type === 'select') {
+        const sale = sales.find((s) => s.id === data.id);
+        if (sale) setSelectedSale(sale);
+      }
+    } catch (e) {
+      // ignore parse errors
+    }
   };
 
   return (
@@ -178,36 +438,33 @@ export default function MapScreen({ navigation }: any) {
         </View>
       )}
 
-      {/* Map Placeholder */}
+      {/* Real Leaflet Map */}
       <View style={s.mapContainer}>
-        <View style={s.mapPlaceholder}>
-          <Text style={s.mapEmoji}>🗺️</Text>
-          <Text style={s.mapText}>Map View</Text>
-          <Text style={s.mapSubtext}>
-            {loading ? 'Loading sales...' : `${sales.length} sales within ${radiusMiles} miles`}
-          </Text>
-          <Text style={s.mapHint}>
-            Connect react-native-maps for interactive pins
-          </Text>
-
-          {/* Fake pin indicators */}
-          {!loading && (
-            <View style={s.pinGrid}>
-              {sales.slice(0, 8).map((sale, i) => (
-                <TouchableOpacity
-                  key={sale.id}
-                  style={[s.fakePin, sale.isFeatured && s.fakePinFeatured]}
-                  onPress={() => setSelectedSale(sale)}
-                >
-                  <Text style={s.fakePinText}>{sale.isFeatured ? '⭐' : '📍'}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-        </View>
+        {locationReady && !loading ? (
+          <WebView
+            key={mapKey}
+            ref={webviewRef}
+            originWhitelist={['*']}
+            source={{ html: generateMapHTML(sales, userLat, userLng, radiusMiles, savedSaleIds) }}
+            style={s.webview}
+            onMessage={handleWebViewMessage}
+            javaScriptEnabled
+            domStorageEnabled
+            scrollEnabled={false}
+            showsHorizontalScrollIndicator={false}
+            showsVerticalScrollIndicator={false}
+          />
+        ) : (
+          <View style={s.loadingMap}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+            <Text style={s.loadingText}>
+              {!locationReady ? 'Getting your location...' : 'Loading sales...'}
+            </Text>
+          </View>
+        )}
       </View>
 
-      {/* Bottom Card — Selected Sale or Quick List */}
+      {/* Bottom Card — Selected Sale */}
       {selectedSale ? (
         <View style={s.bottomCard}>
           <TouchableOpacity
@@ -228,7 +485,7 @@ export default function MapScreen({ navigation }: any) {
                 {getDateLabel(selectedSale)} · {selectedSale.startTime}–{selectedSale.endTime}
               </Text>
               <Text style={s.saleAddress} numberOfLines={1}>
-                📍 {selectedSale.address}, {selectedSale.city}
+                📍 {selectedSale.address}, {selectedSale.city} · {getDistanceLabel(selectedSale)}
               </Text>
               <View style={s.tagRow}>
                 {selectedSale.categories.slice(0, 3).map((catId) => {
@@ -240,7 +497,7 @@ export default function MapScreen({ navigation }: any) {
               </View>
             </View>
             <View style={s.salePreviewRight}>
-              <TouchableOpacity onPress={() => toggleSaveSale(selectedSale.id)}>
+              <TouchableOpacity onPress={() => handleToggleSave(selectedSale.id)}>
                 <Text style={s.heartBtn}>{isSaved(selectedSale.id) ? '❤️' : '🤍'}</Text>
               </TouchableOpacity>
               <Text style={s.arrowBtn}>→</Text>
@@ -253,7 +510,7 @@ export default function MapScreen({ navigation }: any) {
       ) : (
         <View style={s.bottomQuickBar}>
           <Text style={s.quickCount}>
-            {loading ? '...' : `${sales.length} sales nearby`}
+            {loading ? '...' : `${sales.length} sales within ${radiusMiles} mi`}
           </Text>
           <TouchableOpacity
             style={s.listToggleBtn}
@@ -272,12 +529,6 @@ export default function MapScreen({ navigation }: any) {
       >
         <Text style={s.fabText}>＋ Post Sale</Text>
       </TouchableOpacity>
-
-      {loading && (
-        <View style={s.loadingOverlay}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
-        </View>
-      )}
     </SafeAreaView>
   );
 }
@@ -321,25 +572,12 @@ const s = StyleSheet.create({
   chipTextActive: { color: COLORS.textInverse },
   // Map
   mapContainer: { flex: 1 },
-  mapPlaceholder: {
+  webview: { flex: 1 },
+  loadingMap: {
     flex: 1, justifyContent: 'center', alignItems: 'center',
     backgroundColor: '#E8F5E9',
   },
-  mapEmoji: { fontSize: 56, marginBottom: SPACING.md },
-  mapText: { color: COLORS.primary, fontSize: 22, fontWeight: '700' },
-  mapSubtext: { color: COLORS.textSecondary, fontSize: 14, marginTop: SPACING.xs },
-  mapHint: { color: COLORS.textMuted, fontSize: 12, marginTop: SPACING.md, fontStyle: 'italic' },
-  pinGrid: {
-    flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center',
-    marginTop: SPACING.xl, paddingHorizontal: SPACING.xxxl,
-  },
-  fakePin: {
-    width: 44, height: 44, borderRadius: 22, backgroundColor: COLORS.primary + '20',
-    justifyContent: 'center', alignItems: 'center',
-    borderWidth: 2, borderColor: COLORS.primary, margin: SPACING.sm,
-  },
-  fakePinFeatured: { borderColor: COLORS.accent, backgroundColor: COLORS.accentBg },
-  fakePinText: { fontSize: 18 },
+  loadingText: { color: COLORS.textSecondary, fontSize: 14, marginTop: SPACING.md },
   // Bottom card
   bottomCard: {
     backgroundColor: COLORS.bgCard, borderTopWidth: 1, borderTopColor: COLORS.border,
@@ -382,10 +620,4 @@ const s = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4,
   },
   fabText: { color: '#FFF', fontSize: 15, fontWeight: 'bold' },
-  // Loading
-  loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255,255,255,0.7)',
-    justifyContent: 'center', alignItems: 'center',
-  },
 });

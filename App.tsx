@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING, RADIUS } from './src/theme';
+import { XPToastProvider } from './src/components/XPToast';
 
 // Screens
 import MapScreen from './src/screens/Map/MapScreen';
@@ -107,6 +108,7 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
+      <XPToastProvider>
       <NavContext.Provider value={nav}>
         <StatusBar style="dark" />
         <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
@@ -134,6 +136,7 @@ export default function App() {
           )}
         </View>
       </NavContext.Provider>
+      </XPToastProvider>
     </SafeAreaProvider>
   );
 }

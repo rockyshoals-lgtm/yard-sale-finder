@@ -101,7 +101,7 @@ export function generateFakeSales(centerLat: number, centerLng: number, count: n
     const isFeatured = Math.random() < 0.15; // 15% featured
 
     sales.push({
-      id: `sale_${i + 1}_${Date.now()}`,
+      id: `sale_${i + 1}`,
       sellerId: `user_${Math.floor(Math.random() * 100)}`,
       title: randomFromArray(SALE_TITLES),
       description: randomFromArray(DESCRIPTIONS),

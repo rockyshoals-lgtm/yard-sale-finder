@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING, RADIUS, CATEGORIES } from '../../theme';
 import { fetchSales } from '../../services/api';
 import { useUserStore } from '../../stores/userStore';
+import { useXPToast } from '../../components/XPToast';
 import type { Sale } from '../../types';
 
 const DEFAULT_LAT = 45.5152;
@@ -16,6 +17,12 @@ export default function ListScreen({ navigation }: any) {
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
   const { isSaved, toggleSaveSale } = useUserStore();
+  const { showXP } = useXPToast();
+
+  const handleToggleSave = (saleId: string) => {
+    const nowSaved = toggleSaveSale(saleId);
+    if (nowSaved) showXP(2);
+  };
 
   const loadSales = async () => {
     setLoading(true);
@@ -99,7 +106,7 @@ export default function ListScreen({ navigation }: any) {
       {/* Save button */}
       <TouchableOpacity
         style={s.saveBtn}
-        onPress={() => toggleSaveSale(item.id)}
+        onPress={() => handleToggleSave(item.id)}
       >
         <Text style={s.saveBtnText}>{isSaved(item.id) ? '❤️' : '🤍'}</Text>
       </TouchableOpacity>
