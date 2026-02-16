@@ -221,7 +221,7 @@ const s = StyleSheet.create({
     paddingHorizontal: SPACING.md, paddingVertical: 4, alignSelf: 'flex-start', marginBottom: SPACING.sm,
   },
   featuredText: { color: COLORS.accentDark, fontSize: 11, fontWeight: '700' },
-  title: { color: COLORS.text, fontSize: 24, fontWeight: '800', marginBottom: SPACING.lg },
+  title: { color: COLORS.text, fontSize: 24, fontWeight: 'bold', marginBottom: SPACING.lg },
   // Info rows
   infoRow: {
     flexDirection: 'row', alignItems: 'flex-start',
@@ -254,7 +254,7 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: COLORS.border, justifyContent: 'space-around',
   },
   statBox: { alignItems: 'center' },
-  statValue: { color: COLORS.text, fontSize: 18, fontWeight: '800' },
+  statValue: { color: COLORS.text, fontSize: 18, fontWeight: 'bold' },
   statLabel: { color: COLORS.textMuted, fontSize: 11, marginTop: 2 },
   // Actions
   actionRow: { flexDirection: 'row', marginTop: SPACING.xl },

@@ -381,7 +381,7 @@ const s = StyleSheet.create({
     borderRadius: RADIUS.full, elevation: 4,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4,
   },
-  fabText: { color: '#FFF', fontSize: 15, fontWeight: '800' },
+  fabText: { color: '#FFF', fontSize: 15, fontWeight: 'bold' },
   // Loading
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,

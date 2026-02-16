@@ -142,7 +142,7 @@ const s = StyleSheet.create({
     paddingHorizontal: SPACING.xl, paddingVertical: SPACING.md,
     backgroundColor: COLORS.bgCard, borderBottomWidth: 1, borderBottomColor: COLORS.border,
   },
-  headerTitle: { color: COLORS.text, fontSize: 22, fontWeight: '800' },
+  headerTitle: { color: COLORS.text, fontSize: 22, fontWeight: 'bold' },
   headerCount: { color: COLORS.textMuted, fontSize: 13 },
   list: { paddingHorizontal: SPACING.lg, paddingVertical: SPACING.md },
   card: {

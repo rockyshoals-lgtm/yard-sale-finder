@@ -335,7 +335,7 @@ const s = StyleSheet.create({
   progressFill: { height: '100%', backgroundColor: COLORS.primary, borderRadius: 2 },
   scrollContent: { padding: SPACING.xl, paddingBottom: 40 },
   stepContent: {},
-  stepTitle: { color: COLORS.text, fontSize: 22, fontWeight: '800', marginBottom: SPACING.sm },
+  stepTitle: { color: COLORS.text, fontSize: 22, fontWeight: 'bold', marginBottom: SPACING.sm },
   stepDesc: { color: COLORS.textSecondary, fontSize: 14, lineHeight: 20, marginBottom: SPACING.xl },
   // Inputs
   label: { color: COLORS.text, fontSize: 14, fontWeight: '600', marginTop: SPACING.lg, marginBottom: SPACING.sm },

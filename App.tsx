@@ -4,7 +4,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Text } from 'react-native';
+import { Text, View } from 'react-native';
 import { COLORS } from './src/theme';
 
 // Screens
@@ -20,7 +20,9 @@ const Stack = createNativeStackNavigator();
 
 function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
   return (
-    <Text style={{ fontSize: 22, opacity: focused ? 1 : 0.5 }}>{emoji}</Text>
+    <View style={{ opacity: focused ? 1 : 0.5 }}>
+      <Text style={{ fontSize: 22 }}>{emoji}</Text>
+    </View>
   );
 }
 
@@ -40,7 +42,7 @@ function HomeTabs() {
         tabBarInactiveTintColor: COLORS.textMuted,
         tabBarLabelStyle: {
           fontSize: 11,
-          fontWeight: '600',
+          fontWeight: '600' as const,
           marginTop: 2,
         },
       }}
@@ -88,16 +90,8 @@ export default function App() {
         <StatusBar style="dark" />
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           <Stack.Screen name="HomeTabs" component={HomeTabs} />
-          <Stack.Screen
-            name="SaleDetail"
-            component={SaleDetailScreen}
-            options={{ animation: 'slide_from_right' }}
-          />
-          <Stack.Screen
-            name="CreateSale"
-            component={CreateSaleScreen}
-            options={{ animation: 'slide_from_bottom', presentation: 'modal' }}
-          />
+          <Stack.Screen name="SaleDetail" component={SaleDetailScreen} />
+          <Stack.Screen name="CreateSale" component={CreateSaleScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>

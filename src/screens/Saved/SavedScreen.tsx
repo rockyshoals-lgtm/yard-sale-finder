@@ -89,7 +89,7 @@ export default function SavedScreen({ navigation }: any) {
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.bg },
   header: { paddingHorizontal: SPACING.xl, paddingTop: SPACING.lg, paddingBottom: SPACING.md },
-  title: { color: COLORS.text, fontSize: 24, fontWeight: '800' },
+  title: { color: COLORS.text, fontSize: 24, fontWeight: 'bold' },
   subtitle: { color: COLORS.textSecondary, fontSize: 14, marginTop: 4 },
   list: { padding: SPACING.lg, paddingBottom: 100 },
   // Card

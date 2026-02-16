@@ -86,7 +86,7 @@ export const FONTS = {
   medium: { fontWeight: '500' as const },
   semibold: { fontWeight: '600' as const },
   bold: { fontWeight: '700' as const },
-  black: { fontWeight: '800' as const },
+  black: { fontWeight: 'bold' as const },
 };
 
 // Categories for yard sale items

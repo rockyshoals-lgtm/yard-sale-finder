@@ -143,7 +143,7 @@ const s = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: COLORS.primary,
   },
   avatarEmoji: { fontSize: 36 },
-  displayName: { color: COLORS.text, fontSize: 22, fontWeight: '800', marginTop: SPACING.md },
+  displayName: { color: COLORS.text, fontSize: 22, fontWeight: 'bold', marginTop: SPACING.md },
   tierBadge: {
     backgroundColor: COLORS.bgMuted, paddingHorizontal: SPACING.md, paddingVertical: 4,
     borderRadius: RADIUS.full, marginTop: SPACING.sm,
@@ -155,7 +155,7 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: COLORS.border, marginBottom: SPACING.xl,
   },
   levelHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.md },
-  levelTitle: { color: COLORS.primary, fontSize: 18, fontWeight: '800' },
+  levelTitle: { color: COLORS.primary, fontSize: 18, fontWeight: 'bold' },
   levelName: { color: COLORS.textSecondary, fontSize: 14, fontStyle: 'italic' },
   xpBarBg: { height: 10, borderRadius: 5, backgroundColor: COLORS.bgMuted, overflow: 'hidden' },
   xpBarFill: { height: '100%', borderRadius: 5, backgroundColor: COLORS.primary },
@@ -171,7 +171,7 @@ const s = StyleSheet.create({
     alignItems: 'center', borderWidth: 1, borderColor: COLORS.border, margin: '1.5%',
   },
   statIcon: { fontSize: 20, marginBottom: 4 },
-  statValue: { fontSize: 20, fontWeight: '800' },
+  statValue: { fontSize: 20, fontWeight: 'bold' },
   statLabel: { color: COLORS.textMuted, fontSize: 10, marginTop: 2 },
   // Badges
   sectionTitle: { color: COLORS.text, fontSize: 18, fontWeight: '700', marginBottom: SPACING.md },
