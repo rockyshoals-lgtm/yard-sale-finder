@@ -287,7 +287,7 @@ const s = StyleSheet.create({
   // Search
   searchRow: {
     flexDirection: 'row', paddingHorizontal: SPACING.lg, paddingVertical: SPACING.sm,
-    gap: SPACING.sm, backgroundColor: COLORS.bgCard,
+    backgroundColor: COLORS.bgCard,
     borderBottomWidth: 1, borderBottomColor: COLORS.border,
   },
   searchBox: {
@@ -301,7 +301,7 @@ const s = StyleSheet.create({
   filterToggle: {
     width: 44, height: 44, borderRadius: RADIUS.lg, backgroundColor: COLORS.bg,
     justifyContent: 'center', alignItems: 'center',
-    borderWidth: 1, borderColor: COLORS.border,
+    borderWidth: 1, borderColor: COLORS.border, marginLeft: SPACING.sm,
   },
   filterToggleActive: { backgroundColor: COLORS.primaryBg, borderColor: COLORS.primary },
   filterIcon: { fontSize: 20 },
@@ -331,12 +331,12 @@ const s = StyleSheet.create({
   mapHint: { color: COLORS.textMuted, fontSize: 12, marginTop: SPACING.md, fontStyle: 'italic' },
   pinGrid: {
     flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center',
-    gap: SPACING.lg, marginTop: SPACING.xl, paddingHorizontal: SPACING.xxxl,
+    marginTop: SPACING.xl, paddingHorizontal: SPACING.xxxl,
   },
   fakePin: {
     width: 44, height: 44, borderRadius: 22, backgroundColor: COLORS.primary + '20',
     justifyContent: 'center', alignItems: 'center',
-    borderWidth: 2, borderColor: COLORS.primary,
+    borderWidth: 2, borderColor: COLORS.primary, margin: SPACING.sm,
   },
   fakePinFeatured: { borderColor: COLORS.accent, backgroundColor: COLORS.accentBg },
   fakePinText: { fontSize: 18 },
@@ -346,8 +346,8 @@ const s = StyleSheet.create({
     padding: SPACING.lg, paddingBottom: SPACING.xl,
   },
   salePreview: { flexDirection: 'row', justifyContent: 'space-between' },
-  salePreviewLeft: { flex: 1, gap: 4 },
-  salePreviewRight: { alignItems: 'center', gap: SPACING.md, paddingLeft: SPACING.md },
+  salePreviewLeft: { flex: 1 },
+  salePreviewRight: { alignItems: 'center', paddingLeft: SPACING.md },
   featuredBadge: {
     backgroundColor: COLORS.accentBg, borderRadius: RADIUS.sm,
     paddingHorizontal: SPACING.sm, paddingVertical: 2, alignSelf: 'flex-start',
@@ -356,9 +356,9 @@ const s = StyleSheet.create({
   saleTitle: { color: COLORS.text, fontSize: 16, fontWeight: '700' },
   saleMeta: { color: COLORS.textSecondary, fontSize: 13 },
   saleAddress: { color: COLORS.textMuted, fontSize: 12 },
-  tagRow: { flexDirection: 'row', gap: SPACING.sm, marginTop: 4 },
-  miniTag: { color: COLORS.textSecondary, fontSize: 11, backgroundColor: COLORS.bgMuted, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
-  heartBtn: { fontSize: 24 },
+  tagRow: { flexDirection: 'row', marginTop: 4 },
+  miniTag: { color: COLORS.textSecondary, fontSize: 11, backgroundColor: COLORS.bgMuted, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginRight: SPACING.sm },
+  heartBtn: { fontSize: 24, marginBottom: SPACING.md },
   arrowBtn: { color: COLORS.primary, fontSize: 24, fontWeight: '700' },
   closePreview: { position: 'absolute', top: SPACING.sm, right: SPACING.sm },
   closeText: { color: COLORS.textMuted, fontSize: 16 },

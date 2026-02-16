@@ -113,7 +113,7 @@ export default function CreateSaleScreen({ navigation }: any) {
             />
 
             <View style={s.row}>
-              <View style={{ flex: 2 }}>
+              <View style={{ flex: 2, marginRight: SPACING.md }}>
                 <Text style={s.label}>City *</Text>
                 <TextInput
                   style={s.input}
@@ -345,7 +345,7 @@ const s = StyleSheet.create({
   },
   textArea: { minHeight: 100, textAlignVertical: 'top' },
   charCount: { color: COLORS.textMuted, fontSize: 11, textAlign: 'right', marginTop: 4 },
-  row: { flexDirection: 'row', gap: SPACING.md },
+  row: { flexDirection: 'row' },
   // Time selector
   timeScroll: { marginTop: SPACING.sm },
   timeChip: {
@@ -356,10 +356,11 @@ const s = StyleSheet.create({
   timeText: { color: COLORS.textSecondary, fontSize: 13, fontWeight: '600' },
   timeTextActive: { color: COLORS.primary },
   // Categories
-  catGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm },
+  catGrid: { flexDirection: 'row', flexWrap: 'wrap' },
   catChip: {
     paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm, borderRadius: RADIUS.full,
     backgroundColor: COLORS.bgCard, borderWidth: 1, borderColor: COLORS.border,
+    marginRight: SPACING.sm, marginBottom: SPACING.sm,
   },
   catChipActive: { backgroundColor: COLORS.primaryBg, borderColor: COLORS.primary },
   catText: { color: COLORS.textSecondary, fontSize: 13, fontWeight: '600' },

@@ -164,11 +164,11 @@ const s = StyleSheet.create({
   xpNext: { color: COLORS.textMuted, fontSize: 12 },
   // Stats
   statsGrid: {
-    flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm, marginBottom: SPACING.xl,
+    flexDirection: 'row', flexWrap: 'wrap', marginBottom: SPACING.xl,
   },
   statBox: {
-    width: '31%', backgroundColor: COLORS.bgCard, borderRadius: RADIUS.md, padding: SPACING.md,
-    alignItems: 'center', borderWidth: 1, borderColor: COLORS.border,
+    width: '30%', backgroundColor: COLORS.bgCard, borderRadius: RADIUS.md, padding: SPACING.md,
+    alignItems: 'center', borderWidth: 1, borderColor: COLORS.border, margin: '1.5%',
   },
   statIcon: { fontSize: 20, marginBottom: 4 },
   statValue: { fontSize: 20, fontWeight: '800' },
@@ -176,10 +176,10 @@ const s = StyleSheet.create({
   // Badges
   sectionTitle: { color: COLORS.text, fontSize: 18, fontWeight: '700', marginBottom: SPACING.md },
   subSection: { color: COLORS.textMuted, fontSize: 14, fontWeight: '600', marginTop: SPACING.lg, marginBottom: SPACING.sm },
-  badgeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm },
+  badgeGrid: { flexDirection: 'row', flexWrap: 'wrap' },
   badgeCard: {
-    width: '48%', backgroundColor: COLORS.bgCard, borderRadius: RADIUS.md, padding: SPACING.md,
-    alignItems: 'center', borderWidth: 1, borderColor: COLORS.border,
+    width: '47%', backgroundColor: COLORS.bgCard, borderRadius: RADIUS.md, padding: SPACING.md,
+    alignItems: 'center', borderWidth: 1, borderColor: COLORS.border, margin: '1.5%',
   },
   badgeLocked: { opacity: 0.5 },
   badgeEmoji: { fontSize: 28, marginBottom: 4 },
@@ -194,10 +194,10 @@ const s = StyleSheet.create({
   },
   proTitle: { color: COLORS.pro, fontSize: 18, fontWeight: '700', marginBottom: SPACING.sm },
   proDesc: { color: COLORS.textSecondary, fontSize: 14, lineHeight: 20, marginBottom: SPACING.lg },
-  proBtns: { gap: SPACING.sm },
+  proBtns: {},
   proBtnBuyer: {
     backgroundColor: COLORS.primary, paddingVertical: SPACING.md, borderRadius: RADIUS.md,
-    alignItems: 'center',
+    alignItems: 'center', marginBottom: SPACING.sm,
   },
   proBtnSeller: {
     backgroundColor: COLORS.pro, paddingVertical: SPACING.md, borderRadius: RADIUS.md,

@@ -107,8 +107,8 @@ const s = StyleSheet.create({
   cardTitle: { color: COLORS.text, fontSize: 15, fontWeight: '700' },
   cardDate: { color: COLORS.primary, fontSize: 12, fontWeight: '600', marginTop: 4 },
   cardAddress: { color: COLORS.textSecondary, fontSize: 12, marginTop: 2 },
-  cardCategories: { flexDirection: 'row', gap: 6, marginTop: 6 },
-  catChip: { color: COLORS.primaryDark, fontSize: 11, fontWeight: '600' },
+  cardCategories: { flexDirection: 'row', marginTop: 6 },
+  catChip: { color: COLORS.primaryDark, fontSize: 11, fontWeight: '600', marginRight: 6 },
   removeBtn: {
     justifyContent: 'center', alignItems: 'center', paddingHorizontal: SPACING.md,
   },

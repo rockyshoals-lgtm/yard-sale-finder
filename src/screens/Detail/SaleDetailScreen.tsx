@@ -206,8 +206,8 @@ const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.bg },
   content: { paddingBottom: 40 },
   photo: { width: SCREEN_WIDTH, height: 240 },
-  photoDots: { flexDirection: 'row', justifyContent: 'center', gap: 6, paddingVertical: SPACING.sm },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.borderDark },
+  photoDots: { flexDirection: 'row', justifyContent: 'center', paddingVertical: SPACING.sm },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.borderDark, marginHorizontal: 3 },
   dotActive: { backgroundColor: COLORS.primary, width: 20 },
   backBtn: {
     position: 'absolute', top: SPACING.md, left: SPACING.lg,
@@ -224,43 +224,44 @@ const s = StyleSheet.create({
   title: { color: COLORS.text, fontSize: 24, fontWeight: '800', marginBottom: SPACING.lg },
   // Info rows
   infoRow: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: SPACING.md,
+    flexDirection: 'row', alignItems: 'flex-start',
     backgroundColor: COLORS.bgCard, borderRadius: RADIUS.md, padding: SPACING.lg,
     marginBottom: SPACING.sm, borderWidth: 1, borderColor: COLORS.border,
   },
-  infoIcon: { fontSize: 20, marginTop: 2 },
+  infoIcon: { fontSize: 20, marginTop: 2, marginRight: SPACING.md },
   infoLabel: { color: COLORS.text, fontSize: 15, fontWeight: '600' },
   infoSub: { color: COLORS.textSecondary, fontSize: 13, marginTop: 2 },
   directionsBtn: { color: COLORS.primary, fontSize: 13, fontWeight: '700' },
   // Sections
   sectionTitle: { color: COLORS.text, fontSize: 16, fontWeight: '700', marginTop: SPACING.xl, marginBottom: SPACING.sm },
   description: { color: COLORS.textSecondary, fontSize: 15, lineHeight: 22 },
-  tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm },
+  tagRow: { flexDirection: 'row', flexWrap: 'wrap' },
   categoryChip: {
     backgroundColor: COLORS.primaryBg, paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm,
     borderRadius: RADIUS.full, borderWidth: 1, borderColor: COLORS.primaryBorder,
+    marginRight: SPACING.sm, marginBottom: SPACING.sm,
   },
   categoryText: { color: COLORS.primaryDark, fontSize: 13, fontWeight: '600' },
   itemTag: {
     backgroundColor: COLORS.bgMuted, paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm,
-    borderRadius: RADIUS.sm,
+    borderRadius: RADIUS.sm, marginRight: SPACING.sm, marginBottom: SPACING.sm,
   },
   itemTagText: { color: COLORS.textSecondary, fontSize: 13 },
   // Stats
   statsCard: {
     flexDirection: 'row', backgroundColor: COLORS.bgCard, borderRadius: RADIUS.lg,
-    padding: SPACING.lg, marginTop: SPACING.xl, gap: SPACING.lg,
+    padding: SPACING.lg, marginTop: SPACING.xl,
     borderWidth: 1, borderColor: COLORS.border, justifyContent: 'space-around',
   },
   statBox: { alignItems: 'center' },
   statValue: { color: COLORS.text, fontSize: 18, fontWeight: '800' },
   statLabel: { color: COLORS.textMuted, fontSize: 11, marginTop: 2 },
   // Actions
-  actionRow: { flexDirection: 'row', gap: SPACING.sm, marginTop: SPACING.xl },
+  actionRow: { flexDirection: 'row', marginTop: SPACING.xl },
   actionBtn: {
     flex: 1, paddingVertical: SPACING.md, borderRadius: RADIUS.md,
     borderWidth: 1, borderColor: COLORS.border, alignItems: 'center',
-    backgroundColor: COLORS.bgCard,
+    backgroundColor: COLORS.bgCard, marginRight: SPACING.sm,
   },
   actionBtnActive: { borderColor: COLORS.error, backgroundColor: COLORS.errorBg },
   actionBtnVisited: { borderColor: COLORS.success, backgroundColor: COLORS.successBg },
