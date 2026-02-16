@@ -1,91 +1,17 @@
 import React from 'react';
-import { enableScreens } from 'react-native-screens';
-
-// Disable native screens — forces JS-based View containers
-// Fixes java.lang.String→Boolean crash on Android
-enableScreens(false);
-
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Text, View } from 'react-native';
-import { COLORS } from './src/theme';
-
-// Screens
-import MapScreen from './src/screens/Map/MapScreen';
-import ListScreen from './src/screens/List/ListScreen';
-import SavedScreen from './src/screens/Saved/SavedScreen';
-import ProfileScreen from './src/screens/Profile/ProfileScreen';
-import SaleDetailScreen from './src/screens/Detail/SaleDetailScreen';
-import CreateSaleScreen from './src/screens/CreateSale/CreateSaleScreen';
 
 const Tab = createBottomTabNavigator();
-const Stack = createNativeStackNavigator();
 
-function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
+function Placeholder({ route }: any) {
   return (
-    <View style={{ opacity: focused ? 1 : 0.5 }}>
-      <Text style={{ fontSize: 22 }}>{emoji}</Text>
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8F9FA' }}>
+      <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#0D9488' }}>{route.name}</Text>
     </View>
-  );
-}
-
-function HomeTabs() {
-  return (
-    <Tab.Navigator
-      screenOptions={{
-        headerShown: false,
-        tabBarStyle: {
-          backgroundColor: COLORS.bgCard,
-          borderTopColor: COLORS.border,
-          borderTopWidth: 1,
-          paddingTop: 6,
-          height: 80,
-        },
-        tabBarActiveTintColor: COLORS.primary,
-        tabBarInactiveTintColor: COLORS.textMuted,
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '600' as const,
-          marginTop: 2,
-        },
-      }}
-    >
-      <Tab.Screen
-        name="Map"
-        component={MapScreen}
-        options={{
-          tabBarLabel: 'Explore',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🗺️" focused={focused} />,
-        }}
-      />
-      <Tab.Screen
-        name="List"
-        component={ListScreen}
-        options={{
-          tabBarLabel: 'List',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="📋" focused={focused} />,
-        }}
-      />
-      <Tab.Screen
-        name="Saved"
-        component={SavedScreen}
-        options={{
-          tabBarLabel: 'Saved',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="❤️" focused={focused} />,
-        }}
-      />
-      <Tab.Screen
-        name="Profile"
-        component={ProfileScreen}
-        options={{
-          tabBarLabel: 'Profile',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="👤" focused={focused} />,
-        }}
-      />
-    </Tab.Navigator>
   );
 }
 
@@ -94,11 +20,12 @@ export default function App() {
     <SafeAreaProvider>
       <NavigationContainer>
         <StatusBar style="dark" />
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="HomeTabs" component={HomeTabs} />
-          <Stack.Screen name="SaleDetail" component={SaleDetailScreen} />
-          <Stack.Screen name="CreateSale" component={CreateSaleScreen} />
-        </Stack.Navigator>
+        <Tab.Navigator screenOptions={{ headerShown: false }}>
+          <Tab.Screen name="Explore" component={Placeholder} />
+          <Tab.Screen name="List" component={Placeholder} />
+          <Tab.Screen name="Saved" component={Placeholder} />
+          <Tab.Screen name="Profile" component={Placeholder} />
+        </Tab.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>
   );
