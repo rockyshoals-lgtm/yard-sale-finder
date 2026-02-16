@@ -162,6 +162,12 @@ export const useUserStore = create<UserState>()(
     {
       name: 'yardfind-user',
       storage: createJSONStorage(() => AsyncStorage),
+      partialize: (state) => ({
+        profile: state.profile,
+        isAuthenticated: state.isAuthenticated,
+        savedSaleIds: state.savedSaleIds,
+        visitedSaleIds: state.visitedSaleIds,
+      }),
     }
   )
 );

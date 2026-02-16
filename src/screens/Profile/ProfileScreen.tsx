@@ -181,7 +181,7 @@ const s = StyleSheet.create({
     width: '48%', backgroundColor: COLORS.bgCard, borderRadius: RADIUS.md, padding: SPACING.md,
     alignItems: 'center', borderWidth: 1, borderColor: COLORS.border,
   },
-  badgeLocked: { opacity: 0.6, borderStyle: 'dashed' as any },
+  badgeLocked: { opacity: 0.5 },
   badgeEmoji: { fontSize: 28, marginBottom: 4 },
   badgeName: { color: COLORS.text, fontSize: 12, fontWeight: '700', textAlign: 'center' },
   badgeDesc: { color: COLORS.textSecondary, fontSize: 10, textAlign: 'center', marginTop: 2 },
