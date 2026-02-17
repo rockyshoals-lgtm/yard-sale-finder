@@ -6,6 +6,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING, RADIUS, CATEGORIES } from '../../theme';
 import { useUserStore } from '../../stores/userStore';
+import { useSaleStore } from '../../stores/saleStore';
+import { useXPToast } from '../../components/XPToast';
+import { createSale } from '../../services/api';
+import { analytics } from '../../services/analytics';
 import type { CategoryId } from '../../types';
 
 const TIME_OPTIONS = [
@@ -14,9 +18,56 @@ const TIME_OPTIONS = [
   '4:00 PM', '5:00 PM', '6:00 PM',
 ];
 
+// Rough ZIP → lat/lng estimates for Portland-area ZIPs (expand as needed)
+const ZIP_ESTIMATES: Record<string, { lat: number; lng: number }> = {
+  '97201': { lat: 45.5215, lng: -122.6898 },
+  '97202': { lat: 45.4800, lng: -122.6432 },
+  '97203': { lat: 45.5916, lng: -122.7475 },
+  '97204': { lat: 45.5174, lng: -122.6750 },
+  '97205': { lat: 45.5196, lng: -122.6980 },
+  '97206': { lat: 45.4760, lng: -122.5990 },
+  '97209': { lat: 45.5326, lng: -122.6858 },
+  '97210': { lat: 45.5370, lng: -122.7124 },
+  '97211': { lat: 45.5724, lng: -122.6422 },
+  '97212': { lat: 45.5451, lng: -122.6432 },
+  '97213': { lat: 45.5381, lng: -122.5990 },
+  '97214': { lat: 45.5145, lng: -122.6432 },
+  '97215': { lat: 45.5138, lng: -122.5990 },
+  '97216': { lat: 45.5143, lng: -122.5560 },
+  '97217': { lat: 45.5900, lng: -122.6900 },
+  '97218': { lat: 45.5744, lng: -122.5990 },
+  '97219': { lat: 45.4600, lng: -122.6980 },
+  '97220': { lat: 45.5518, lng: -122.5560 },
+  '97221': { lat: 45.4947, lng: -122.7250 },
+  '97222': { lat: 45.4440, lng: -122.6150 },
+  '97223': { lat: 45.4434, lng: -122.7780 },
+  '97224': { lat: 45.4070, lng: -122.7780 },
+  '97225': { lat: 45.5000, lng: -122.7780 },
+  '97229': { lat: 45.5390, lng: -122.8180 },
+  '97230': { lat: 45.5560, lng: -122.5060 },
+  '97231': { lat: 45.6270, lng: -122.8180 },
+  '97232': { lat: 45.5340, lng: -122.6432 },
+  '97233': { lat: 45.5184, lng: -122.4960 },
+  '97236': { lat: 45.4820, lng: -122.5060 },
+  '97266': { lat: 45.4650, lng: -122.5560 },
+};
+
+function estimateLocation(zip: string): { lat: number; lng: number } {
+  const known = ZIP_ESTIMATES[zip];
+  if (known) return known;
+  // Default: Portland center with small random jitter
+  return {
+    lat: 45.5152 + (Math.random() - 0.5) * 0.04,
+    lng: -122.6784 + (Math.random() - 0.5) * 0.04,
+  };
+}
+
 export default function CreateSaleScreen({ navigation }: any) {
-  const { profile } = useUserStore();
+  const { addXP, addCoins, incrementSalesPosted } = useUserStore();
+  const { addPostedSale } = useSaleStore();
+  const { showXP, showCoins, showToast, showBadge } = useXPToast();
   const [step, setStep] = useState(0);
+  const [posting, setPosting] = useState(false);
 
   // Form state
   const [title, setTitle] = useState('');
@@ -40,17 +91,68 @@ export default function CreateSaleScreen({ navigation }: any) {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!title || !address || !city || !state || !zipCode || !startDate) {
       Alert.alert('Missing Info', 'Please fill in all required fields.');
       return;
     }
-    // Simulate posting
-    Alert.alert(
-      '🎉 Sale Posted!',
-      'Your yard sale is now live and visible to nearby hunters. You earned +20 XP!',
-      [{ text: 'Awesome!', onPress: () => navigation.goBack() }]
-    );
+
+    setPosting(true);
+    try {
+      const loc = estimateLocation(zipCode);
+      const tagList = tags
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean);
+
+      // Create via API (adds to in-memory cache for current session)
+      const newSale = await createSale({
+        title,
+        description,
+        address,
+        city,
+        state,
+        zipCode,
+        latitude: loc.lat,
+        longitude: loc.lng,
+        startDate,
+        endDate: endDate || startDate,
+        startTime,
+        endTime,
+        categories,
+        tags: tagList,
+        photos: [],
+      });
+
+      // Persist to local store (survives app restart)
+      addPostedSale(newSale);
+
+      // Rewards
+      addXP(20);
+      addCoins(10);
+      incrementSalesPosted();
+
+      // Analytics
+      analytics.salePosted(newSale.id);
+
+      // Toasts
+      showXP(20);
+      setTimeout(() => showCoins(10), 400);
+      setTimeout(() => showToast('Sale posted! Hunters can find you now.'), 800);
+
+      // Check if first_sale badge was just awarded
+      const { profile } = useUserStore.getState();
+      if (profile?.badges.includes('first_sale') && profile.totalSalesPosted === 1) {
+        setTimeout(() => showBadge('First Sale!'), 1200);
+      }
+
+      navigation.goBack();
+    } catch (err) {
+      console.error('Failed to post sale:', err);
+      Alert.alert('Error', 'Failed to post your sale. Please try again.');
+    } finally {
+      setPosting(false);
+    }
   };
 
   const canProceed = () => {
@@ -68,7 +170,7 @@ export default function CreateSaleScreen({ navigation }: any) {
       case 0:
         return (
           <View style={s.stepContent}>
-            <Text style={s.stepTitle}>📝 Tell us about your sale</Text>
+            <Text style={s.stepTitle}>Tell us about your sale</Text>
             <Text style={s.stepDesc}>A catchy title and description help hunters find you.</Text>
 
             <Text style={s.label}>Sale Title *</Text>
@@ -100,7 +202,7 @@ export default function CreateSaleScreen({ navigation }: any) {
       case 1:
         return (
           <View style={s.stepContent}>
-            <Text style={s.stepTitle}>📍 Where is your sale?</Text>
+            <Text style={s.stepTitle}>Where is your sale?</Text>
             <Text style={s.stepDesc}>Enter your address so hunters can find you on the map.</Text>
 
             <Text style={s.label}>Street Address *</Text>
@@ -147,19 +249,22 @@ export default function CreateSaleScreen({ navigation }: any) {
               keyboardType="number-pad"
               maxLength={5}
             />
+            <Text style={s.zipHint}>
+              We use your ZIP to pin your sale on the map. Portland-area ZIPs get precise placement.
+            </Text>
           </View>
         );
 
       case 2:
         return (
           <View style={s.stepContent}>
-            <Text style={s.stepTitle}>📅 When is your sale?</Text>
+            <Text style={s.stepTitle}>When is your sale?</Text>
             <Text style={s.stepDesc}>Enter dates and times. Multi-day sales welcome!</Text>
 
             <Text style={s.label}>Start Date * (YYYY-MM-DD)</Text>
             <TextInput
               style={s.input}
-              placeholder="2025-06-14"
+              placeholder="2026-06-14"
               placeholderTextColor={COLORS.textMuted}
               value={startDate}
               onChangeText={setStartDate}
@@ -168,7 +273,7 @@ export default function CreateSaleScreen({ navigation }: any) {
             <Text style={s.label}>End Date (leave blank for single day)</Text>
             <TextInput
               style={s.input}
-              placeholder="2025-06-15"
+              placeholder="2026-06-15"
               placeholderTextColor={COLORS.textMuted}
               value={endDate}
               onChangeText={setEndDate}
@@ -205,7 +310,7 @@ export default function CreateSaleScreen({ navigation }: any) {
       case 3:
         return (
           <View style={s.stepContent}>
-            <Text style={s.stepTitle}>🏷️ Categories & Items</Text>
+            <Text style={s.stepTitle}>Categories & Items</Text>
             <Text style={s.stepDesc}>Pick up to 5 categories. Add item tags to attract buyers.</Text>
 
             <Text style={s.label}>Categories * ({categories.length}/5)</Text>
@@ -241,7 +346,7 @@ export default function CreateSaleScreen({ navigation }: any) {
       case 4:
         return (
           <View style={s.stepContent}>
-            <Text style={s.stepTitle}>🎯 Review Your Sale</Text>
+            <Text style={s.stepTitle}>Review Your Sale</Text>
             <Text style={s.stepDesc}>Make sure everything looks good before posting!</Text>
 
             <View style={s.reviewCard}>
@@ -251,9 +356,16 @@ export default function CreateSaleScreen({ navigation }: any) {
               <Text style={s.reviewLabel}>Address</Text>
               <Text style={s.reviewValue}>{address}, {city}, {state} {zipCode}</Text>
 
+              <Text style={s.reviewLabel}>Map Pin</Text>
+              <Text style={s.reviewValueSmall}>
+                {ZIP_ESTIMATES[zipCode]
+                  ? `Pinned by ZIP (${zipCode})`
+                  : `Estimated near Portland center`}
+              </Text>
+
               <Text style={s.reviewLabel}>Date</Text>
               <Text style={s.reviewValue}>
-                {startDate}{endDate ? ` — ${endDate}` : ''} · {startTime}–{endTime}
+                {startDate}{endDate ? ` to ${endDate}` : ''} | {startTime} - {endTime}
               </Text>
 
               <Text style={s.reviewLabel}>Categories</Text>
@@ -275,7 +387,10 @@ export default function CreateSaleScreen({ navigation }: any) {
               <Text style={s.reviewValue}>{description}</Text>
             </View>
 
-            <Text style={s.xpHint}>📊 You'll earn +20 XP and +10 coins for posting!</Text>
+            <View style={s.rewardPreview}>
+              <Text style={s.rewardTitle}>Rewards for posting:</Text>
+              <Text style={s.rewardItem}>+20 XP | +10 Coins | First Sale badge</Text>
+            </View>
           </View>
         );
     }
@@ -302,7 +417,7 @@ export default function CreateSaleScreen({ navigation }: any) {
         <View style={s.navRow}>
           {step > 0 ? (
             <TouchableOpacity style={s.backBtn} onPress={() => setStep(step - 1)}>
-              <Text style={s.backBtnText}>← Back</Text>
+              <Text style={s.backBtnText}>Back</Text>
             </TouchableOpacity>
           ) : (
             <TouchableOpacity style={s.backBtn} onPress={() => navigation.goBack()}>
@@ -316,11 +431,15 @@ export default function CreateSaleScreen({ navigation }: any) {
               onPress={() => setStep(step + 1)}
               disabled={!canProceed()}
             >
-              <Text style={s.nextBtnText}>Next →</Text>
+              <Text style={s.nextBtnText}>Next</Text>
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity style={s.submitBtn} onPress={handleSubmit}>
-              <Text style={s.submitBtnText}>🎉 Post Sale</Text>
+            <TouchableOpacity
+              style={[s.submitBtn, posting && s.nextBtnDisabled]}
+              onPress={handleSubmit}
+              disabled={posting}
+            >
+              <Text style={s.submitBtnText}>{posting ? 'Posting...' : 'Post Sale'}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -346,6 +465,7 @@ const s = StyleSheet.create({
   textArea: { minHeight: 100, textAlignVertical: 'top' },
   charCount: { color: COLORS.textMuted, fontSize: 11, textAlign: 'right', marginTop: 4 },
   row: { flexDirection: 'row' },
+  zipHint: { color: COLORS.textMuted, fontSize: 11, marginTop: SPACING.sm, fontStyle: 'italic' },
   // Time selector
   timeScroll: { marginTop: SPACING.sm },
   timeChip: {
@@ -372,7 +492,13 @@ const s = StyleSheet.create({
   },
   reviewLabel: { color: COLORS.textMuted, fontSize: 11, fontWeight: '600', marginTop: SPACING.md, letterSpacing: 0.5 },
   reviewValue: { color: COLORS.text, fontSize: 15, marginTop: 4 },
-  xpHint: { color: COLORS.primary, fontSize: 13, textAlign: 'center', marginTop: SPACING.xl, fontStyle: 'italic' },
+  reviewValueSmall: { color: COLORS.textSecondary, fontSize: 13, marginTop: 4, fontStyle: 'italic' },
+  rewardPreview: {
+    backgroundColor: COLORS.primaryBg, borderRadius: RADIUS.md, padding: SPACING.lg,
+    marginTop: SPACING.xl, alignItems: 'center',
+  },
+  rewardTitle: { color: COLORS.primary, fontSize: 14, fontWeight: '700', marginBottom: 4 },
+  rewardItem: { color: COLORS.primaryDark, fontSize: 13 },
   // Nav
   navRow: {
     flexDirection: 'row', justifyContent: 'space-between', padding: SPACING.xl,

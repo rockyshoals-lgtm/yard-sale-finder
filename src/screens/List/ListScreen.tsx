@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING, RADIUS, CATEGORIES } from '../../theme';
 import { fetchSales } from '../../services/api';
 import { useUserStore } from '../../stores/userStore';
+import { useSaleStore } from '../../stores/saleStore';
 import { useXPToast } from '../../components/XPToast';
 import type { Sale } from '../../types';
 
@@ -17,6 +18,7 @@ export default function ListScreen({ navigation }: any) {
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
   const { isSaved, toggleSaveSale } = useUserStore();
+  const { isLikelyEnded, getConfirmation } = useSaleStore();
   const { showXP } = useXPToast();
 
   const handleToggleSave = (saleId: string) => {
@@ -52,66 +54,105 @@ export default function ListScreen({ navigation }: any) {
     return start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
   };
 
-  const renderSaleCard = ({ item }: { item: Sale }) => (
-    <TouchableOpacity
-      style={[s.card, item.isFeatured && s.cardFeatured]}
-      onPress={() => navigation.navigate('SaleDetail', { sale: item })}
-      activeOpacity={0.7}
-    >
-      {/* Photo */}
-      {item.photos.length > 0 && (
-        <Image source={{ uri: item.photos[0] }} style={s.cardImage} />
-      )}
+  const getLastConfirmedLabel = (saleId: string): string | null => {
+    const conf = getConfirmation(saleId);
+    if (!conf.lastConfirmedAt) return null;
+    const diff = Date.now() - new Date(conf.lastConfirmedAt).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'Confirmed just now';
+    if (mins < 60) return `Confirmed ${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `Confirmed ${hrs}h ago`;
+    return `Confirmed ${Math.floor(hrs / 24)}d ago`;
+  };
 
-      <View style={s.cardBody}>
-        {item.isFeatured && (
-          <View style={s.featuredBadge}>
-            <Text style={s.featuredText}>⭐ FEATURED</Text>
+  const renderSaleCard = ({ item }: { item: Sale }) => {
+    const ended = isLikelyEnded(item.id);
+    const confirmedLabel = getLastConfirmedLabel(item.id);
+
+    return (
+      <TouchableOpacity
+        style={[s.card, item.isFeatured && s.cardFeatured, ended && s.cardEnded]}
+        onPress={() => navigation.navigate('SaleDetail', { sale: item })}
+        activeOpacity={0.7}
+      >
+        {/* Photo */}
+        {item.photos.length > 0 && (
+          <View>
+            <Image source={{ uri: item.photos[0] }} style={s.cardImage} />
+            {ended && (
+              <View style={s.endedOverlay}>
+                <Text style={s.endedOverlayText}>Likely Ended</Text>
+              </View>
+            )}
           </View>
         )}
 
-        <Text style={s.cardTitle} numberOfLines={2}>{item.title}</Text>
+        <View style={s.cardBody}>
+          {/* Status badges row */}
+          <View style={s.badgeRow}>
+            {item.isFeatured && (
+              <View style={s.featuredBadge}>
+                <Text style={s.featuredText}>FEATURED</Text>
+              </View>
+            )}
+            {ended && !item.photos.length && (
+              <View style={s.endedBadge}>
+                <Text style={s.endedBadgeText}>Likely Ended</Text>
+              </View>
+            )}
+            {confirmedLabel && !ended && (
+              <View style={s.confirmedBadge}>
+                <Text style={s.confirmedBadgeText}>{confirmedLabel}</Text>
+              </View>
+            )}
+          </View>
 
-        <Text style={s.cardMeta}>
-          📅 {getDateLabel(item)} · {item.startTime}–{item.endTime}
-        </Text>
+          <Text style={[s.cardTitle, ended && s.cardTitleEnded]} numberOfLines={2}>
+            {item.title}
+          </Text>
 
-        <Text style={s.cardAddress} numberOfLines={1}>
-          📍 {item.address}, {item.city}, {item.state}
-        </Text>
+          <Text style={s.cardMeta}>
+            {getDateLabel(item)} | {item.startTime}-{item.endTime}
+          </Text>
 
-        {/* Categories */}
-        <View style={s.tagRow}>
-          {item.categories.slice(0, 3).map((catId) => {
-            const cat = CATEGORIES.find((c) => c.id === catId);
-            return cat ? (
-              <Text key={catId} style={s.tag}>{cat.emoji} {cat.label}</Text>
-            ) : null;
-          })}
-          {item.categories.length > 3 && (
-            <Text style={s.tagMore}>+{item.categories.length - 3}</Text>
-          )}
+          <Text style={s.cardAddress} numberOfLines={1}>
+            {item.address}, {item.city}, {item.state}
+          </Text>
+
+          {/* Categories */}
+          <View style={s.tagRow}>
+            {item.categories.slice(0, 3).map((catId) => {
+              const cat = CATEGORIES.find((c) => c.id === catId);
+              return cat ? (
+                <Text key={catId} style={s.tag}>{cat.emoji} {cat.label}</Text>
+              ) : null;
+            })}
+            {item.categories.length > 3 && (
+              <Text style={s.tagMore}>+{item.categories.length - 3}</Text>
+            )}
+          </View>
+
+          {/* Stats row */}
+          <View style={s.statsRow}>
+            <Text style={s.stat}>{item.viewCount} views</Text>
+            <Text style={s.stat}>{item.saveCount} saves</Text>
+            {item.ratingCount > 0 && (
+              <Text style={s.stat}>{item.rating.toFixed(1)} rating</Text>
+            )}
+          </View>
         </View>
 
-        {/* Stats row */}
-        <View style={s.statsRow}>
-          <Text style={s.stat}>👀 {item.viewCount}</Text>
-          <Text style={s.stat}>❤️ {item.saveCount}</Text>
-          {item.ratingCount > 0 && (
-            <Text style={s.stat}>⭐ {item.rating.toFixed(1)}</Text>
-          )}
-        </View>
-      </View>
-
-      {/* Save button */}
-      <TouchableOpacity
-        style={s.saveBtn}
-        onPress={() => handleToggleSave(item.id)}
-      >
-        <Text style={s.saveBtnText}>{isSaved(item.id) ? '❤️' : '🤍'}</Text>
+        {/* Save button */}
+        <TouchableOpacity
+          style={s.saveBtn}
+          onPress={() => handleToggleSave(item.id)}
+        >
+          <Text style={s.saveBtnText}>{isSaved(item.id) ? '❤️' : '🤍'}</Text>
+        </TouchableOpacity>
       </TouchableOpacity>
-    </TouchableOpacity>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
@@ -159,14 +200,32 @@ const s = StyleSheet.create({
     shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
   },
   cardFeatured: { borderColor: COLORS.accent + '60', borderWidth: 2 },
+  cardEnded: { opacity: 0.7 },
   cardImage: { width: '100%', height: 160 },
+  endedOverlay: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center',
+  },
+  endedOverlayText: { color: '#fff', fontSize: 16, fontWeight: '700', letterSpacing: 0.5 },
   cardBody: { padding: SPACING.lg },
+  badgeRow: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 4 },
   featuredBadge: {
     backgroundColor: COLORS.accentBg, borderRadius: RADIUS.sm,
-    paddingHorizontal: SPACING.sm, paddingVertical: 2, alignSelf: 'flex-start', marginBottom: 4,
+    paddingHorizontal: SPACING.sm, paddingVertical: 2, marginRight: SPACING.sm, marginBottom: 4,
   },
   featuredText: { color: COLORS.accentDark, fontSize: 10, fontWeight: '700' },
+  endedBadge: {
+    backgroundColor: COLORS.error + '20', borderRadius: RADIUS.sm,
+    paddingHorizontal: SPACING.sm, paddingVertical: 2, marginRight: SPACING.sm, marginBottom: 4,
+  },
+  endedBadgeText: { color: COLORS.error, fontSize: 10, fontWeight: '700' },
+  confirmedBadge: {
+    backgroundColor: COLORS.success + '20', borderRadius: RADIUS.sm,
+    paddingHorizontal: SPACING.sm, paddingVertical: 2, marginRight: SPACING.sm, marginBottom: 4,
+  },
+  confirmedBadgeText: { color: COLORS.success, fontSize: 10, fontWeight: '600' },
   cardTitle: { color: COLORS.text, fontSize: 17, fontWeight: '700' },
+  cardTitleEnded: { textDecorationLine: 'line-through', color: COLORS.textMuted },
   cardMeta: { color: COLORS.textSecondary, fontSize: 13 },
   cardAddress: { color: COLORS.textMuted, fontSize: 12 },
   tagRow: { flexDirection: 'row', marginTop: 4, flexWrap: 'wrap' },

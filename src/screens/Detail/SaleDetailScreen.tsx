@@ -6,19 +6,29 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING, RADIUS, CATEGORIES } from '../../theme';
 import { useUserStore } from '../../stores/userStore';
+import { useSaleStore } from '../../stores/saleStore';
 import { useXPToast } from '../../components/XPToast';
+import { analytics } from '../../services/analytics';
 import type { Sale } from '../../types';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function SaleDetailScreen({ route, navigation }: any) {
   const sale: Sale = route.params.sale;
-  const { isSaved, toggleSaveSale, isVisited, markVisited, profile } = useUserStore();
-  const { showXP, showCoins } = useXPToast();
+  const { isSaved, toggleSaveSale, isVisited, markVisited, profile, incrementConfirmations } = useUserStore();
+  const { confirmSale, getConfirmation, isLikelyEnded } = useSaleStore();
+  const { showXP, showCoins, showToast, showBadge } = useXPToast();
   const [photoIndex, setPhotoIndex] = useState(0);
 
   const saved = isSaved(sale.id);
   const visited = isVisited(sale.id);
+  const confirmation = getConfirmation(sale.id);
+  const likelyEnded = isLikelyEnded(sale.id);
+
+  // Track view
+  React.useEffect(() => {
+    analytics.saleView(sale.id);
+  }, [sale.id]);
 
   const startDate = new Date(sale.startDate + 'T00:00:00');
   const endDate = new Date(sale.endDate + 'T00:00:00');
@@ -28,11 +38,13 @@ export default function SaleDetailScreen({ route, navigation }: any) {
     : '';
 
   const openDirections = () => {
+    analytics.directions(sale.id);
     const url = `https://maps.google.com/?q=${sale.location.latitude},${sale.location.longitude}`;
     Linking.openURL(url);
   };
 
   const handleShare = async () => {
+    analytics.share(sale.id);
     try {
       await Share.share({
         message: `Check out this yard sale: "${sale.title}" at ${sale.address}, ${sale.city} — ${dateStr} ${sale.startTime}–${sale.endTime}\n\nFound on YardFind 🗺️`,
@@ -42,7 +54,8 @@ export default function SaleDetailScreen({ route, navigation }: any) {
 
   const handleMarkVisited = () => {
     if (!isVisited(sale.id)) {
-      markVisited(sale.id);
+      markVisited(sale.id, sale.location.latitude, sale.location.longitude);
+      analytics.saleVisit(sale.id);
       showXP(10);
       setTimeout(() => showCoins(5), 400);
     }
@@ -50,10 +63,36 @@ export default function SaleDetailScreen({ route, navigation }: any) {
 
   const handleToggleSave = () => {
     const nowSaved = toggleSaveSale(sale.id);
-    if (nowSaved) {
-      showXP(2);
+    analytics.saleSave(sale.id, nowSaved);
+    if (nowSaved) showXP(2);
+  };
+
+  const handleConfirm = (vote: 'yes' | 'no') => {
+    confirmSale(sale.id, vote);
+    if (vote === 'yes') {
+      analytics.confirmYes(sale.id);
+      incrementConfirmations();
+      showToast('Thanks! Confirmed as active', '✅', COLORS.success);
+      showXP(3);
+    } else {
+      analytics.confirmNo(sale.id);
+      showToast('Reported as ended', '📋', COLORS.textSecondary);
     }
   };
+
+  // Format "Last confirmed" relative time
+  const getLastConfirmedLabel = (): string | null => {
+    if (!confirmation.lastConfirmedAt) return null;
+    const diff = Date.now() - new Date(confirmation.lastConfirmedAt).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    return `${Math.floor(hrs / 24)}d ago`;
+  };
+
+  const lastConfirmed = getLastConfirmedLabel();
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
@@ -90,13 +129,30 @@ export default function SaleDetailScreen({ route, navigation }: any) {
 
         {/* Content */}
         <View style={s.body}>
-          {sale.isFeatured && (
+          {/* Likely Ended Banner */}
+          {likelyEnded && (
+            <View style={s.endedBanner}>
+              <Text style={s.endedText}>⚠️ Likely Ended — Multiple users reported this sale has ended</Text>
+            </View>
+          )}
+
+          {sale.isFeatured && !likelyEnded && (
             <View style={s.featuredBadge}>
               <Text style={s.featuredText}>⭐ FEATURED SALE</Text>
             </View>
           )}
 
           <Text style={s.title}>{sale.title}</Text>
+
+          {/* Last Confirmed Badge */}
+          {lastConfirmed && (
+            <View style={s.confirmedRow}>
+              <Text style={s.confirmedText}>✅ Last confirmed: {lastConfirmed}</Text>
+              <Text style={s.confirmedCount}>
+                {confirmation.yesCount} 👍 · {confirmation.noCount} 👎
+              </Text>
+            </View>
+          )}
 
           {/* Date & Time */}
           <View style={s.infoRow}>
@@ -170,6 +226,30 @@ export default function SaleDetailScreen({ route, navigation }: any) {
             )}
           </View>
 
+          {/* ── Trust Loop: Confirmation Buttons ── */}
+          <Text style={s.sectionTitle}>Is this sale still happening?</Text>
+          <View style={s.trustRow}>
+            <TouchableOpacity
+              style={[s.trustBtn, s.trustYes, confirmation.userVote === 'yes' && s.trustYesActive]}
+              onPress={() => handleConfirm('yes')}
+            >
+              <Text style={[s.trustBtnText, confirmation.userVote === 'yes' && s.trustBtnTextActive]}>
+                ✅ Still happening
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[s.trustBtn, s.trustNo, confirmation.userVote === 'no' && s.trustNoActive]}
+              onPress={() => handleConfirm('no')}
+            >
+              <Text style={[s.trustBtnText, confirmation.userVote === 'no' && s.trustBtnTextActive]}>
+                ❌ Ended / Not here
+              </Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={s.trustHint}>
+            Help fellow hunters by confirming sale status (+3 XP)
+          </Text>
+
           {/* Action Buttons */}
           <View style={s.actionRow}>
             <TouchableOpacity
@@ -229,12 +309,27 @@ const s = StyleSheet.create({
   },
   backText: { color: COLORS.text, fontSize: 14, fontWeight: '700' },
   body: { padding: SPACING.xl },
+  // Ended banner
+  endedBanner: {
+    backgroundColor: COLORS.warningBg, borderRadius: RADIUS.md, padding: SPACING.md,
+    borderWidth: 1, borderColor: COLORS.warning, marginBottom: SPACING.md,
+  },
+  endedText: { color: COLORS.accentDark, fontSize: 13, fontWeight: '600', textAlign: 'center' },
+  // Featured
   featuredBadge: {
     backgroundColor: COLORS.accentBg, borderRadius: RADIUS.sm,
     paddingHorizontal: SPACING.md, paddingVertical: 4, alignSelf: 'flex-start', marginBottom: SPACING.sm,
   },
   featuredText: { color: COLORS.accentDark, fontSize: 11, fontWeight: '700' },
-  title: { color: COLORS.text, fontSize: 24, fontWeight: 'bold', marginBottom: SPACING.lg },
+  title: { color: COLORS.text, fontSize: 24, fontWeight: 'bold', marginBottom: SPACING.sm },
+  // Confirmed row
+  confirmedRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    backgroundColor: COLORS.successBg, borderRadius: RADIUS.sm, paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm, marginBottom: SPACING.lg,
+  },
+  confirmedText: { color: COLORS.success, fontSize: 12, fontWeight: '600' },
+  confirmedCount: { color: COLORS.textMuted, fontSize: 11 },
   // Info rows
   infoRow: {
     flexDirection: 'row', alignItems: 'flex-start',
@@ -269,6 +364,19 @@ const s = StyleSheet.create({
   statBox: { alignItems: 'center' },
   statValue: { color: COLORS.text, fontSize: 18, fontWeight: 'bold' },
   statLabel: { color: COLORS.textMuted, fontSize: 11, marginTop: 2 },
+  // Trust Loop
+  trustRow: { flexDirection: 'row', gap: SPACING.sm },
+  trustBtn: {
+    flex: 1, paddingVertical: SPACING.md, borderRadius: RADIUS.md,
+    borderWidth: 2, alignItems: 'center',
+  },
+  trustYes: { borderColor: COLORS.success, backgroundColor: COLORS.bgCard },
+  trustNo: { borderColor: COLORS.error, backgroundColor: COLORS.bgCard },
+  trustYesActive: { backgroundColor: COLORS.successBg, borderColor: COLORS.success },
+  trustNoActive: { backgroundColor: COLORS.errorBg, borderColor: COLORS.error },
+  trustBtnText: { fontSize: 13, fontWeight: '700', color: COLORS.text },
+  trustBtnTextActive: { fontWeight: '800' },
+  trustHint: { color: COLORS.textMuted, fontSize: 11, textAlign: 'center', marginTop: SPACING.sm, fontStyle: 'italic' },
   // Actions
   actionRow: { flexDirection: 'row', marginTop: SPACING.xl },
   actionBtn: {

@@ -8,7 +8,7 @@ import { useUserStore } from '../../stores/userStore';
 import { BADGES } from '../../data/badges';
 
 export default function ProfileScreen({ navigation }: any) {
-  const { profile } = useUserStore();
+  const { profile, getCurrentWeekendStamp, weekendStamps } = useUserStore();
   if (!profile) return null;
 
   const currentLevel = HUNTER_LEVELS.find((l) => l.level === profile.level) || HUNTER_LEVELS[0];
@@ -20,18 +20,28 @@ export default function ProfileScreen({ navigation }: any) {
   const earnedBadges = BADGES.filter((b) => profile.badges.includes(b.id));
   const lockedBadges = BADGES.filter((b) => !profile.badges.includes(b.id));
 
+  // Weekend Hunt stamp card
+  const currentStamp = getCurrentWeekendStamp();
+  const stampCount = currentStamp.saleIds.length;
+  const STAMP_GOAL = 5;
+
+  // Recent weekend history (last 4 weekends)
+  const recentWeekends = Object.values(weekendStamps)
+    .sort((a, b) => b.weekendKey.localeCompare(a.weekendKey))
+    .slice(0, 4);
+
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
       <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
         {/* Profile Header */}
         <View style={s.header}>
           <View style={s.avatarCircle}>
-            <Text style={s.avatarEmoji}>🏷️</Text>
+            <Text style={s.avatarEmoji}>{currentLevel.level >= 5 ? '👑' : '🏷️'}</Text>
           </View>
           <Text style={s.displayName}>{profile.displayName}</Text>
           <View style={s.tierBadge}>
             <Text style={s.tierText}>
-              {profile.tier === 'free' ? '🆓 Free' : profile.tier === 'buyer_pro' ? '💎 Buyer Pro' : '⚡ Seller Pro'}
+              {profile.tier === 'free' ? 'Free' : profile.tier === 'buyer_pro' ? 'Buyer Pro' : 'Seller Pro'}
             </Text>
           </View>
         </View>
@@ -53,6 +63,56 @@ export default function ProfileScreen({ navigation }: any) {
           </View>
         </View>
 
+        {/* Weekend Hunt Stamp Card */}
+        <View style={s.stampCard}>
+          <View style={s.stampHeader}>
+            <Text style={s.stampTitle}>Weekend Hunt</Text>
+            <Text style={s.stampProgress}>{stampCount}/{STAMP_GOAL}</Text>
+          </View>
+          <Text style={s.stampDesc}>
+            Visit {STAMP_GOAL} sales this weekend to earn bonus XP and a badge!
+          </Text>
+
+          {/* Stamp dots */}
+          <View style={s.stampRow}>
+            {Array.from({ length: STAMP_GOAL }).map((_, i) => (
+              <View
+                key={i}
+                style={[
+                  s.stampDot,
+                  i < stampCount && s.stampDotFilled,
+                  i === stampCount && s.stampDotNext,
+                ]}
+              >
+                <Text style={s.stampDotText}>
+                  {i < stampCount ? '✓' : i + 1}
+                </Text>
+              </View>
+            ))}
+          </View>
+
+          {currentStamp.completed && (
+            <View style={s.stampCompleteBanner}>
+              <Text style={s.stampCompleteText}>Weekend Hunt Complete! +50 XP +20 Coins</Text>
+            </View>
+          )}
+
+          {/* Recent weekend history */}
+          {recentWeekends.length > 0 && (
+            <View style={s.stampHistory}>
+              <Text style={s.stampHistoryLabel}>Recent weekends:</Text>
+              <View style={s.stampHistoryRow}>
+                {recentWeekends.map((w) => (
+                  <View key={w.weekendKey} style={[s.stampHistoryItem, w.completed && s.stampHistoryCompleted]}>
+                    <Text style={s.stampHistoryCount}>{w.saleIds.length}</Text>
+                    <Text style={s.stampHistoryDate}>{formatWeekendLabel(w.weekendKey)}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+        </View>
+
         {/* Stats Grid */}
         <View style={s.statsGrid}>
           <StatBox icon="🔥" value={profile.huntStreak} label="Hunt Streak" color={COLORS.error} />
@@ -64,7 +124,7 @@ export default function ProfileScreen({ navigation }: any) {
         </View>
 
         {/* Badges */}
-        <Text style={s.sectionTitle}>🏅 Badges ({earnedBadges.length}/{BADGES.length})</Text>
+        <Text style={s.sectionTitle}>Badges ({earnedBadges.length}/{BADGES.length})</Text>
 
         {earnedBadges.length > 0 && (
           <View style={s.badgeGrid}>
@@ -99,7 +159,7 @@ export default function ProfileScreen({ navigation }: any) {
         {/* Pro Upsell */}
         {profile.tier === 'free' && (
           <View style={s.proCard}>
-            <Text style={s.proTitle}>🚀 Upgrade to Pro</Text>
+            <Text style={s.proTitle}>Upgrade to Pro</Text>
             <Text style={s.proDesc}>
               Unlimited saves, advanced alerts, early access to new sales, and badge boosts.
             </Text>
@@ -116,11 +176,16 @@ export default function ProfileScreen({ navigation }: any) {
 
         {/* Settings Link */}
         <TouchableOpacity style={s.settingsBtn}>
-          <Text style={s.settingsText}>⚙️ Settings</Text>
+          <Text style={s.settingsText}>Settings</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
+}
+
+function formatWeekendLabel(weekendKey: string): string {
+  const d = new Date(weekendKey + 'T12:00:00');
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 function StatBox({ icon, value, label, color }: { icon: string; value: number; label: string; color: string }) {
@@ -152,7 +217,7 @@ const s = StyleSheet.create({
   // Level
   levelCard: {
     backgroundColor: COLORS.bgCard, borderRadius: RADIUS.lg, padding: SPACING.xl,
-    borderWidth: 1, borderColor: COLORS.border, marginBottom: SPACING.xl,
+    borderWidth: 1, borderColor: COLORS.border, marginBottom: SPACING.lg,
   },
   levelHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.md },
   levelTitle: { color: COLORS.primary, fontSize: 18, fontWeight: 'bold' },
@@ -162,6 +227,42 @@ const s = StyleSheet.create({
   xpRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: SPACING.sm },
   xpText: { color: COLORS.text, fontSize: 13, fontWeight: '700' },
   xpNext: { color: COLORS.textMuted, fontSize: 12 },
+  // Weekend Hunt Stamp Card
+  stampCard: {
+    backgroundColor: COLORS.bgCard, borderRadius: RADIUS.lg, padding: SPACING.xl,
+    borderWidth: 1, borderColor: COLORS.primary + '40', marginBottom: SPACING.xl,
+  },
+  stampHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  stampTitle: { color: COLORS.primary, fontSize: 18, fontWeight: '700' },
+  stampProgress: { color: COLORS.primary, fontSize: 16, fontWeight: '700' },
+  stampDesc: { color: COLORS.textSecondary, fontSize: 13, marginTop: 4, marginBottom: SPACING.lg },
+  stampRow: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: SPACING.md },
+  stampDot: {
+    width: 44, height: 44, borderRadius: 22, backgroundColor: COLORS.bgMuted,
+    justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: COLORS.border,
+  },
+  stampDotFilled: {
+    backgroundColor: COLORS.primary, borderColor: COLORS.primary,
+  },
+  stampDotNext: {
+    borderColor: COLORS.primary, borderStyle: 'dashed',
+  },
+  stampDotText: { color: COLORS.textMuted, fontSize: 14, fontWeight: '700' },
+  stampCompleteBanner: {
+    backgroundColor: COLORS.successBg || COLORS.primaryBg, borderRadius: RADIUS.md, padding: SPACING.md,
+    alignItems: 'center', marginTop: SPACING.sm,
+  },
+  stampCompleteText: { color: COLORS.success || COLORS.primary, fontSize: 13, fontWeight: '700' },
+  stampHistory: { marginTop: SPACING.lg, borderTopWidth: 1, borderTopColor: COLORS.border, paddingTop: SPACING.md },
+  stampHistoryLabel: { color: COLORS.textMuted, fontSize: 11, fontWeight: '600', marginBottom: SPACING.sm },
+  stampHistoryRow: { flexDirection: 'row' },
+  stampHistoryItem: {
+    backgroundColor: COLORS.bgMuted, borderRadius: RADIUS.sm, padding: SPACING.sm,
+    marginRight: SPACING.sm, alignItems: 'center', minWidth: 56,
+  },
+  stampHistoryCompleted: { backgroundColor: COLORS.primaryBg },
+  stampHistoryCount: { color: COLORS.text, fontSize: 16, fontWeight: '700' },
+  stampHistoryDate: { color: COLORS.textMuted, fontSize: 10, marginTop: 2 },
   // Stats
   statsGrid: {
     flexDirection: 'row', flexWrap: 'wrap', marginBottom: SPACING.xl,
